@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Device Info Tracker</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 50px;
+    background-color: #f4f4f4;
+  }
+  #info {
+    font-size: 18px;
+    margin-top: 20px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    white-space: pre-line;
+  }
+</style>
+</head>
+<body>
+<h1>Your Device Info</h1>
+<div id="info">Detecting...</div>
+
+<script>
+// Detect mobile brand
+function detectMobileBrand() {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  let brand = "Unknown";
+  if (/Samsung/i.test(ua)) brand = "Samsung";
+  else if (/iPhone|iPad|iPod/i.test(ua)) brand = "Apple";
+  else if (/Huawei/i.test(ua)) brand = "Huawei";
+  else if (/Redmi/i.test(ua)) brand = "Redmi";
+  else if (/Xiaomi/i.test(ua)) brand = "Xiaomi";
+  else if (/Oppo/i.test(ua)) brand = "Oppo";
+  else if (/Vivo/i.test(ua)) brand = "Vivo";
+  else if (/Realme/i.test(ua)) brand = "Realme";
+  else if (/OnePlus/i.test(ua)) brand = "OnePlus";
+  else if (/Motorola/i.test(ua)) brand = "Motorola";
+  else if (/Google/i.test(ua)) brand = "Google Pixel";
+  return brand;
+}
+
+// Detect OS
+function detectOS() {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Macintosh/i.test(ua)) return "MacOS";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Unknown";
+}
+
+// Detect browser
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) return "Chrome";
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "Safari";
+  if (/Firefox/i.test(ua)) return "Firefox";
+  if (/Edg/i.test(ua)) return "Edge";
+  if (/Opera|OPR/i.test(ua)) return "Opera";
+  return "Unknown";
+}
+
+// Send info to server
+function sendToServer(data) {
+  fetch('/log-device', { // replace with your server endpoint
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).catch(err => console.log('Error sending device info:', err));
+}
+
+// Main function to detect battery and other info
+function detectDeviceInfo() {
+  function updateInfo(batteryLevel, chargingStatus, ip="Unknown") {
+    const infoData = {
+      brand: detectMobileBrand(),
+      os: detectOS(),
+      browser: detectBrowser(),
+      batteryLevel: batteryLevel,
+      chargingStatus: chargingStatus,
+      ipAddress: ip
+    };
+
+    // Show on screen
+    document.getElementById('info').innerText =
+      `Mobile Brand: ${infoData.brand}\n` +
+      `OS: ${infoData.os}\n` +
+      `Browser: ${infoData.browser}\n` +
+      `Battery Level: ${infoData.batteryLevel}\n` +
+      `Charging Status: ${infoData.chargingStatus}\n` +
+      `IP Address: ${infoData.ipAddress}`;
+
+    // Send to server
+    sendToServer(infoData);
+  }
+
+  // Fetch IP using free API
+  fetch('https://api.ipify.org?format=json')
+    .then(res => res.json())
+    .then(data => {
+      const ip = data.ip;
+
+      if ('getBattery' in navigator) {
+        navigator.getBattery().then(function(battery) {
+          function updateBattery() {
+            const level = Math.round(battery.level * 100) + "%";
+            const status = battery.charging ? "Charging" : "Not Charging";
+            updateInfo(level, status, ip);
+          }
+
+          updateBattery();
+          battery.addEventListener('chargingchange', updateBattery);
+          battery.addEventListener('levelchange', updateBattery);
+        });
+      } else {
+        updateInfo("N/A", "Not supported", ip);
+      }
+    })
+    .catch(() => {
+      if ('getBattery' in navigator) {
+        navigator.getBattery().then(function(battery) {
+          function updateBattery() {
+            const level = Math.round(battery.level * 100) + "%";
+            const status = battery.charging ? "Charging" : "Not Charging";
+            updateInfo(level, status);
+          }
+          updateBattery();
+          battery.addEventListener('chargingchange', updateBattery);
+          battery.addEventListener('levelchange', updateBattery);
+        });
+      } else {
+        updateInfo("N/A", "Not supported");
+      }
+    });
+}
+
+detectDeviceInfo();
+</script>
+</body>
+</html>
